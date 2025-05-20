@@ -41,3 +41,24 @@
   font-size: 12px;
   color: #4f46e5; /* match focus border */
 }
+
+
+/* OUTLINE BUTTON */
+.outlineButton{
+  background-color: var(--background);
+  border: 3px solid var(--primary);
+  text-align: center;
+  font-weight: bold;
+  padding: 10px;
+  padding-left: 20px;
+  padding-right: 20px;
+  border-radius: 20px;
+  color: var(--primary);
+  transition: background-color 0.3s ease-in-out, color 0.3s ease-in-out;
+}
+
+.outlineButton:hover{
+  background-color: var(--primary);
+  color: white;
+  
+}
