@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Login Card</title>
+  <link rel="stylesheet" href="../../styles/login.css">
+</head>
+<body>
+  <div class="card">
+    <img src="../../assets/images/tara.png" class="logo" />
+    <h2>Login</h2>
+    <form id="login-form">
+      <div class="form-group">
+        <label for="email">Email</label>
+        <div id="email-error" class="error-message"></div>
+        <input type="email" id="email" required />
+      </div>
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" required />
+      </div>
+      <button type="submit" class="login-btn">Sign In</button>
+    </form>
+  </div>
+
+  <!-- Modular Firebase Setup -->
+  <script type="module">
+    import { auth, db } from '../../firebase/config.js';
+    import {
+      signInWithEmailAndPassword,
+      signOut
+    } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-auth.js";
+    import {
+      doc,
+      getDoc
+    } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-firestore.js";
+
+    const loginForm = document.getElementById('login-form');
+    const emailInput = document.getElementById('email');
+    const passwordInput = document.getElementById('password');
+    const emailError = document.getElementById('email-error');
+
+    loginForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+
+      const email = emailInput.value;
+      const password = passwordInput.value;
+
+      try {
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+
+        const userDocRef = doc(db, 'users', user.uid);
+        const userDoc = await getDoc(userDocRef);
+
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          if (userData.type === 'admin') {
+            window.location.href = '../dashboard/home.html';
+          } else {
+            emailError.textContent = "Only admin users can log in.";
+            emailError.classList.add('show');
+            await signOut(auth);
+          }
+        } else {
+          emailError.textContent = "User data not found.";
+          emailError.classList.add('show');
+          await signOut(auth);
+        }
+      } catch (error) {
+        console.error("Login error:", error);
+        if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+          emailError.textContent = "Incorrect Email or Password";
+        } else {
+          emailError.textContent = "Login failed: " + error.message;
+        }
+        emailError.classList.add('show');
+      }
+    });
+  </script>
+</body>
+</html>

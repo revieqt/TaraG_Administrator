@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
+  <link rel="stylesheet" href="../../constants/colors.css">
+  <link rel="stylesheet" href="../../styles/dashboard.css">
+  <link rel="stylesheet" href="../../styles/home.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&family=Roboto:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Home</title>
+</head>
+<body>
+  <header>
+    <button class="burger-menu" aria-label="Open navigation">&#9776;</button>
+    <h3>TaraG Administrator Panel</h3>
+  </header>
+
+  <nav>
+    <div class="logocontainer">
+      <img src="../../assets/images/logo.png" alt="Logo" class="logo">
+      <div class="titlecontainer">
+        <h3>TaraG</h3>
+        <p>Administrator Panel</p>
+      </div>
+    </div>
+    <ul>
+      <li>  <a href="home.html"><i class="bi bi-house"></i>Home</a></li>
+    </ul>
+
+    <p class="highlight">Users</p>
+    <ul>
+      <li><a href="travelers.html"><i class="bi bi-people"></i>Travelers</a></li>
+      <li><a href="tourguides.html"><i class="bi bi-person"></i>Tour Guides</a></li>
+    </ul>
+
+    <div class="profile">
+      <!-- Redirects to profile.html -->
+      <a href="profile.html">
+        <div class="profileInfo">
+          <h4 id="fullname"></h4>
+          <p id="username"></p>
+        </div>
+      </a>
+
+      <!-- Logout Button -->
+      <a href="../auth/login.html">
+        <i class="bi bi-box-arrow-right"></i>
+      </a>
+    </div>
+  </nav>
+
+  <main>
+    <h1>Tour Guide Content Irid</h1>
+  </main>
+
+  <script src="../../scripts/navbar.js"></script>
+  <script src="../../hooks/useThemeColor.js"></script>
+
+  
+  <script type="module">
+    import { auth, db } from "../../firebase/config.js";
+    import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-auth.js";
+    import { doc, getDoc } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-firestore.js";
+
+    const fullNameEl = document.getElementById("fullname");
+    const usernameEl = document.getElementById("username");
+    const greetingEl = document.getElementById("greeting");
+
+    onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        const uid = user.uid;
+        try {
+          const docRef = doc(db, "users", uid);
+          const docSnap = await getDoc(docRef);
+
+          if (docSnap.exists()) {
+            const userData = docSnap.data();
+            const fname = userData.fname || "";
+            const lname = userData.lname || "";
+            const username = userData.username || "";
+
+            fullNameEl.textContent = `${fname} ${lname}`;
+            usernameEl.textContent = `@${username}`;
+            greetingEl.textContent = `Hello, ${fname} ${lname}!`;
+          } else {
+            console.error("User document not found.");
+          }
+        } catch (err) {
+          console.error("Failed to fetch user data:", err);
+        }
+      } else {
+        window.location.href = "../auth/login.html";
+      }
+    });
+  </script>
+</body>
+</html>
