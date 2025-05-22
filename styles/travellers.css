@@ -1,0 +1,251 @@
+/* Modern and clean table and modal styles */
+
+main {
+  padding: 2.5em 2em 2em 2em;
+  margin-left: 230px;
+  background: #f7f9fb;
+  min-height: 100vh;
+  font-family: 'Open Sans', 'Roboto', Arial, sans-serif;
+}
+
+h2 {
+  font-size: 2.1em;
+  font-weight: 700;
+  color: #22223b;
+  margin-bottom: 30px;
+  letter-spacing: 0.02em;
+}
+
+.search-bar-container {
+      margin-bottom: 1.5em;
+      display: flex;
+      align-items: center;
+      gap: 0.7em;
+    }
+.search-bar {
+    width: 100%;
+    padding: 0.7em 1em;
+    border-radius: 8px;
+    border: 1px solid #e0e4ea;
+    font-size: 1em;
+    background: #f7f9fb;
+    transition: border 0.15s;
+}
+.search-bar:focus {
+    border-color: #1976d2;
+    outline: none;
+}
+.section-title {
+    font-size: 1.1em;
+    font-weight: 600;
+    color: #1976d2;
+    margin: 2em 0 0.7em 0;
+    letter-spacing: 0.01em;
+}
+
+.table-container {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 16px rgba(34, 34, 59, 0.07);
+  padding: 1.5em 1.2em;
+  margin-bottom: 2em;
+  overflow-x: auto;
+}
+
+/* Table scrollable body with max height */
+.table-wrapper {
+  max-height: 500px;
+  overflow-y: auto;
+  overflow-x: visible;
+  border-radius: 8px;
+  box-shadow: none;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 1em;
+  background: transparent;
+}
+
+.table th, .table td {
+  padding: 0.85em 1em;
+  text-align: left;
+}
+
+.table th {
+  background: #f1f3f7;
+  color: #22223b;
+  font-weight: 600;
+  border-bottom: 2px solid #e0e4ea;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.table tr {
+  transition: background 0.2s;
+}
+
+.table tbody tr:hover {
+  background: #f5f7fa;
+}
+
+.table td {
+  border-bottom: 1px solid #e9ecef;
+  color: #3a3a40;
+}
+
+.action-btns button {
+  margin-right: 0.4em;
+  margin-bottom: 0.2em;
+  padding: 0.4em 1.1em;
+  border-radius: 6px;
+  border: none;
+  font-size: 0.98em;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.18s, color 0.18s, box-shadow 0.18s;
+  outline: none;
+}
+
+.action-btns .view-btn {
+  background: #1976d2;
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(25, 118, 210, 0.07);
+}
+.action-btns .view-btn:hover {
+  background: #1256a3;
+}
+
+.action-btns .warn-btn {
+  background: #ff9800;
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(255, 152, 0, 0.07);
+}
+.action-btns .warn-btn:hover {
+  background: #e68900;
+}
+
+.action-btns .ban-btn {
+  background: #d32f2f;
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(211, 47, 47, 0.07);
+}
+.action-btns .ban-btn:hover {
+  background: #a91d1d;
+}
+
+/* Modal overlay and card */
+#modal-overlay {
+  position: fixed;
+  z-index: 1000;
+  left: 0; top: 0; right: 0; bottom: 0;
+  background: rgba(34, 34, 59, 0.18);
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+
+#modal-card {
+  background: #fff;
+  border-radius: 14px;
+  padding: 2.2em 2em 1.5em 2em;
+  min-width: 320px;
+  max-width: 95vw;
+  box-shadow: 0 4px 32px rgba(34, 34, 59, 0.13);
+  position: relative;
+  animation: modalIn 0.18s cubic-bezier(.4,2,.6,1) both;
+}
+
+@keyframes modalIn {
+  from { transform: translateY(40px) scale(0.97); opacity: 0; }
+  to { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+#modal-card h3 {
+  margin-top: 0;
+  font-size: 1.3em;
+  color: #22223b;
+  font-weight: 700;
+  margin-bottom: 1em;
+}
+
+#modal-card p {
+  margin: 0.3em 0 0.7em 0;
+  color: #3a3a40;
+  font-size: 1em;
+}
+
+#modal-card label {
+  font-weight: 500;
+  color: #22223b;
+  margin-bottom: 0.2em;
+  display: block;
+}
+
+#modal-card select,
+#modal-card textarea {
+  width: 100%;
+  padding: 0.5em 0.7em;
+  border-radius: 6px;
+  border: 1px solid #e0e4ea;
+  margin-bottom: 1em;
+  font-size: 1em;
+  background: #f7f9fb;
+  transition: border 0.15s;
+}
+
+#modal-card select:focus,
+#modal-card textarea:focus {
+  border-color: #1976d2;
+  outline: none;
+}
+
+#modal-card button[type="submit"] {
+  background: #1976d2;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 0.6em 1.5em;
+  font-size: 1em;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 0.5em;
+  transition: background 0.18s;
+}
+
+#modal-card button[type="submit"]:hover {
+  background: #1256a3;
+}
+
+#modal-card .close-modal {
+  position: absolute;
+  top: 10px;
+  right: 14px;
+  background: none;
+  border: none;
+  font-size: 1.5em;
+  color: #888;
+  cursor: pointer;
+  transition: color 0.18s;
+}
+#modal-card .close-modal:hover {
+  color: #d32f2f;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  main {
+    padding: 1.2em 0.5em;
+    margin-left: 0px;
+  }
+  #modal-card {
+    padding: 1.2em 0.7em 1em 0.7em;
+    min-width: 0;
+  }
+  .table th, .table td {
+    padding: 0.6em 0.5em;
+    font-size: 0.97em;
+  }
+}

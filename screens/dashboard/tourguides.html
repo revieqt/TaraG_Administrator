@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
+  <link rel="stylesheet" href="../../constants/colors.css">
+  <link rel="stylesheet" href="../../styles/dashboard.css">
+  <link rel="stylesheet" href="../../styles/travellers.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&family=Roboto:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Home</title>
+</head>
+<body>
+  <header>
+    <button class="burger-menu" aria-label="Open navigation">&#9776;</button>
+    <h3>TaraG Administrator Panel</h3>
+  </header>
+
+  <nav>
+    <div class="logocontainer">
+      <img src="../../assets/images/logo.png" alt="Logo" class="logo">
+      <div class="titlecontainer">
+        <h3>TaraG</h3>
+        <p>Administrator Panel</p>
+      </div>
+    </div>
+    <ul>
+      <li><a href="home.html"><i class="bi bi-house"></i>Home</a></li>
+    </ul>
+
+    <p class="highlight">Users</p>
+    <ul>
+      <li><a href="travelers.html"><i class="bi bi-people"></i>Travelers</a></li>
+      <li><a href="tourguides.html"><i class="bi bi-person"></i>Tour Guides</a></li>
+    </ul>
+
+    <div class="profile">
+      <a href="profile.html">
+        <div class="profileInfo">
+          <h4 id="fullname"></h4>
+          <p id="username"></p>
+        </div>
+      </a>
+      <a href="../auth/login.html">
+        <i class="bi bi-box-arrow-right"></i>
+      </a>
+    </div>
+  </nav>
+
+  <main>
+    <h2>Tour Guides</h2>
+    <div class="search-bar-container">
+      <input type="text" id="search-bar" class="search-bar" placeholder="Search by name, username, or email...">
+      <i class="bi bi-search" style="font-size:1.3em;color:#1976d2;"></i>
+    </div>
+    <div id="tourguides-table-container"></div>
+    <div class="section-title">Tour Guide Applications</div>
+    <div id="applications-table-container"></div>
+    <div class="section-title">Warnings</div>
+    <div id="warnings-table-container"></div>
+    <div class="section-title">Bans</div>
+    <div id="bans-table-container"></div>
+    <div id="modal-overlay">
+      <div id="modal-card"></div>
+    </div>
+  </main>
+
+  <script src="../../scripts/navbar.js"></script>
+  <script src="../../scripts/useThemeColor.js"></script>
+
+  <script type="module">
+    import { auth, db } from "../../firebase/config.js";
+    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-auth.js";
+    import { collection, query, where, getDocs, doc, getDoc, addDoc, deleteDoc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-firestore.js";
+
+    // Profile info
+    const fullNameEl = document.getElementById("fullname");
+    const usernameEl = document.getElementById("username");
+
+    onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        const uid = user.uid;
+        try {
+          const docRef = doc(db, "users", uid);
+          const docSnap = await getDoc(docRef);
+
+          if (docSnap.exists()) {
+            const userData = docSnap.data();
+            const fname = userData.fname || "";
+            const lname = userData.lname || "";
+            const username = userData.username || "";
+
+            fullNameEl.textContent = `${fname} ${lname}`;
+            usernameEl.textContent = `@${username}`;
+          } else {
+            console.error("User document not found.");
+          }
+        } catch (err) {
+          console.error("Failed to fetch user data:", err);
+        }
+      } else {
+        window.location.href = "../auth/login.html";
+      }
+    });
+
+    // Modal helpers
+    const modalOverlay = document.getElementById("modal-overlay");
+    const modalCard = document.getElementById("modal-card");
+    function showModal(html) {
+      modalCard.innerHTML = html;
+      modalOverlay.style.display = "flex";
+    }
+    function closeModal() {
+      modalOverlay.style.display = "none";
+      modalCard.innerHTML = "";
+    }
+    modalOverlay.onclick = function(e) {
+      if (e.target === modalOverlay) closeModal();
+    };
+
+    // Duration options and conversion to days
+    const durationOptions = [
+      { label: "1 day", value: 1 },
+      { label: "3 days", value: 3 },
+      { label: "1 week", value: 7 },
+      { label: "2 weeks", value: 14 },
+      { label: "1 month", value: 30 },
+      { label: "1 year", value: 365 },
+      { label: "Until I change it", value: -1 }
+    ];
+
+    // Helper to format Firestore Timestamp to date string
+    function formatDate(ts) {
+      if (!ts) return "";
+      const date = ts.toDate();
+      return date.toISOString().split('T')[0];
+    }
+
+    // Helper to calculate age from birthdate
+    function calculateAge(ts) {
+      if (!ts) return "";
+      const birthDate = ts.toDate();
+      const today = new Date();
+      let age = today.getFullYear() - birthDate.getFullYear();
+      const m = today.getMonth() - birthDate.getMonth();
+      if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
+      }
+      return age;
+    }
+
+    // --- SEARCH ---
+    let searchValue = "";
+    document.getElementById("search-bar").addEventListener("input", e => {
+      searchValue = e.target.value.trim().toLowerCase();
+      loadAllTables();
+    });
+
+    // --- TOUR GUIDES TABLE ---
+    async function loadTourGuides() {
+      const tableContainer = document.getElementById("tourguides-table-container");
+      tableContainer.innerHTML = "<p>Loading...</p>";
+      const q = query(collection(db, "users"), where("type", "==", "tourGuide"));
+      const querySnapshot = await getDocs(q);
+      let rows = "";
+      querySnapshot.forEach(docSnap => {
+        const d = docSnap.data();
+        const fullName = `${d.fname || ""} ${d.mname || ""} ${d.lname || ""}`.trim();
+        const username = d.username || "";
+        const email = d.email || "";
+        // Filter by search
+        if (
+          searchValue &&
+          !(
+            fullName.toLowerCase().includes(searchValue) ||
+            username.toLowerCase().includes(searchValue) ||
+            email.toLowerCase().includes(searchValue)
+          )
+        ) return;
+        rows += `
+          <tr>
+            <td>${fullName}</td>
+            <td>${username}</td>
+            <td>${email}</td>
+            <td class="action-btns">
+              <button class="view-btn" data-id="${docSnap.id}">View</button>
+              <button class="warn-btn" data-id="${docSnap.id}">Warn</button>
+              <button class="ban-btn" data-id="${docSnap.id}">Ban</button>
+            </td>
+          </tr>
+        `;
+      });
+      tableContainer.innerHTML = `
+        <div class="table-container">
+          <div class="table-wrapper">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Full Name</th>
+                  <th>Username</th>
+                  <th>Email</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>${rows || `<tr><td colspan="4" style="text-align:center;">No tour guides found.</td></tr>`}</tbody>
+            </table>
+          </div>
+        </div>
+      `;
+
+      // Attach event listeners
+      document.querySelectorAll(".view-btn").forEach(btn => {
+        btn.onclick = () => showTourGuide(btn.dataset.id);
+      });
+      document.querySelectorAll(".warn-btn").forEach(btn => {
+        btn.onclick = () => showWarnBanForm(btn.dataset.id, "warn");
+      });
+      document.querySelectorAll(".ban-btn").forEach(btn => {
+        btn.onclick = () => showWarnBanForm(btn.dataset.id, "ban");
+      });
+    }
+
+    // --- TOUR GUIDE APPLICATIONS TABLE ---
+    async function loadApplications() {
+      const tableContainer = document.getElementById("applications-table-container");
+      tableContainer.innerHTML = "<p>Loading...</p>";
+      // Only show applications with status "pending"
+      const q = query(collection(db, "applications"), where("status", "==", "pending"));
+      const querySnapshot = await getDocs(q);
+      let rows = "";
+      for (const docSnap of querySnapshot.docs) {
+        const d = docSnap.data();
+        // Get user info
+        let user = {};
+        try {
+          const userSnap = await getDoc(doc(db, "users", d.userId));
+          if (userSnap.exists()) user = userSnap.data();
+        } catch {}
+        const fullName = `${user.fname || ""} ${user.mname || ""} ${user.lname || ""}`.trim();
+        const username = user.username || "";
+        const email = user.email || "";
+        // Filter by search
+        if (
+          searchValue &&
+          !(
+            fullName.toLowerCase().includes(searchValue) ||
+            username.toLowerCase().includes(searchValue) ||
+            email.toLowerCase().includes(searchValue)
+          )
+        ) continue;
+        rows += `
+          <tr>
+            <td>${fullName}</td>
+            <td>${username}</td>
+            <td>${email}</td>
+            <td class="action-btns">
+              <button class="view-app-btn" data-id="${docSnap.id}">View</button>
+              <button class="approve-app-btn" data-id="${docSnap.id}">Approve</button>
+              <button class="reject-app-btn" data-id="${docSnap.id}">Reject</button>
+            </td>
+          </tr>
+        `;
+      }
+      tableContainer.innerHTML = `
+        <div class="table-container">
+          <div class="table-wrapper">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Full Name</th>
+                  <th>Username</th>
+                  <th>Email</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>${rows || `<tr><td colspan="4" style="text-align:center;">No applications found.</td></tr>`}</tbody>
+            </table>
+          </div>
+        </div>
+      `;
+
+      // Attach event listeners
+      document.querySelectorAll(".view-app-btn").forEach(btn => {
+        btn.onclick = () => showApplicationDetails(btn.dataset.id);
+      });
+      document.querySelectorAll(".approve-app-btn").forEach(btn => {
+        btn.onclick = () => handleApplication(btn.dataset.id, "approve");
+      });
+      document.querySelectorAll(".reject-app-btn").forEach(btn => {
+        btn.onclick = () => handleApplication(btn.dataset.id, "reject");
+      });
+    }
+
+    // --- VIEW APPLICATION DETAILS ---
+    async function showApplicationDetails(id) {
+      const docRef = doc(db, "applications", id);
+      const docSnap = await getDoc(docRef);
+      if (!docSnap.exists()) return;
+      const d = docSnap.data();
+      // Get user info
+      let user = {};
+      try {
+        const userSnap = await getDoc(doc(db, "users", d.userId));
+        if (userSnap.exists()) user = userSnap.data();
+      } catch {}
+      const fullName = `${user.fname || ""} ${user.mname || ""} ${user.lname || ""}`.trim();
+      const username = user.username || "";
+      const email = user.email || "";
+      showModal(`
+        <button class="close-modal" onclick="document.getElementById('modal-overlay').style.display='none'">&times;</button>
+        <h3>Tour Guide Application Details</h3>
+        <p><b>Full Name:</b> ${fullName}</p>
+        <p><b>Username:</b> ${username}</p>
+        <p><b>Email:</b> ${email}</p>
+        <p><b>Address:</b> ${d.address || ""}</p>
+        <p><b>Certification:</b> ${d.certification || ""}</p>
+        <p><b>Experience:</b> ${d.experience || ""}</p>
+        <p><b>Languages:</b> ${Array.isArray(d.languages) ? d.languages.join(", ") : (d.languages || "")}</p>
+        <p><b>License:</b> ${d.license || ""}</p>
+        <p><b>Region:</b> ${d.region || ""}</p>
+        <p><b>Socials:</b> ${d.socials || ""}</p>
+        <p><b>Submitted On:</b> ${d.submittedOn ? formatDate(d.submittedOn) : ""}</p>
+      `);
+    }
+
+    // --- HANDLE APPLICATION (APPROVE/REJECT) ---
+    async function handleApplication(id, action) {
+      const docRef = doc(db, "applications", id);
+      const docSnap = await getDoc(docRef);
+      if (!docSnap.exists()) return;
+      if (action === "approve") {
+        if (!confirm("Are you sure you want to approve this application?")) return;
+        try {
+          await updateDoc(docRef, { status: "approved" });
+          alert("Application approved.");
+          loadApplications();
+          loadTourGuides();
+        } catch (err) {
+          alert("Failed to approve: " + err.message);
+        }
+      } else if (action === "reject") {
+        if (!confirm("Are you sure you want to reject this application?")) return;
+        try {
+          await deleteDoc(docRef);
+          alert("Application rejected and deleted.");
+          loadApplications();
+        } catch (err) {
+          alert("Failed to reject: " + err.message);
+        }
+      }
+    }
+
+    // --- WARNINGS TABLE ---
+    async function loadWarnings() {
+      const tableContainer = document.getElementById("warnings-table-container");
+      tableContainer.innerHTML = "<p>Loading...</p>";
+      const q = query(collection(db, "warnings"));
+      const querySnapshot = await getDocs(q);
+      let rows = "";
+      for (const docSnap of querySnapshot.docs) {
+        const d = docSnap.data();
+        // Get user info
+        let user = {};
+        try {
+          const userSnap = await getDoc(doc(db, "users", d.userId));
+          if (userSnap.exists()) user = userSnap.data();
+        } catch {}
+        // Only show warnings for tour guides
+        if (user.type !== "tourGuide") continue;
+        const fullName = `${user.fname || ""} ${user.mname || ""} ${user.lname || ""}`.trim();
+        const username = user.username || "";
+        const email = user.email || "";
+        // Filter by search
+        if (
+          searchValue &&
+          !(
+            fullName.toLowerCase().includes(searchValue) ||
+            username.toLowerCase().includes(searchValue) ||
+            email.toLowerCase().includes(searchValue)
+          )
+        ) continue;
+        rows += `
+          <tr>
+            <td>${fullName}</td>
+            <td>${username}</td>
+            <td>${email}</td>
+            <td class="action-btns">
+              <button class="view-warning-btn" data-id="${docSnap.id}">View</button>
+              <button class="remove-warning-btn" data-id="${docSnap.id}">Remove</button>
+            </td>
+          </tr>
+        `;
+      }
+      tableContainer.innerHTML = `
+        <div class="table-container">
+          <div class="table-wrapper">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Full Name</th>
+                  <th>Username</th>
+                  <th>Email</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>${rows || `<tr><td colspan="4" style="text-align:center;">No warnings found.</td></tr>`}</tbody>
+            </table>
+          </div>
+        </div>
+      `;
+
+      // Attach event listeners
+      document.querySelectorAll(".view-warning-btn").forEach(btn => {
+        btn.onclick = () => showWarnBanDetails(btn.dataset.id, "warnings");
+      });
+      document.querySelectorAll(".remove-warning-btn").forEach(btn => {
+        btn.onclick = () => removeWarnBan(btn.dataset.id, "warnings");
+      });
+    }
+
+    // --- BANS TABLE ---
+    async function loadBans() {
+      const tableContainer = document.getElementById("bans-table-container");
+      tableContainer.innerHTML = "<p>Loading...</p>";
+      const q = query(collection(db, "bans"));
+      const querySnapshot = await getDocs(q);
+      let rows = "";
+      for (const docSnap of querySnapshot.docs) {
+        const d = docSnap.data();
+        // Get user info
+        let user = {};
+        try {
+          const userSnap = await getDoc(doc(db, "users", d.userId));
+          if (userSnap.exists()) user = userSnap.data();
+        } catch {}
+        // Only show bans for tour guides
+        if (user.type !== "tourGuide") continue;
+        const fullName = `${user.fname || ""} ${user.mname || ""} ${user.lname || ""}`.trim();
+        const username = user.username || "";
+        const email = user.email || "";
+        // Filter by search
+        if (
+          searchValue &&
+          !(
+            fullName.toLowerCase().includes(searchValue) ||
+            username.toLowerCase().includes(searchValue) ||
+            email.toLowerCase().includes(searchValue)
+          )
+        ) continue;
+        rows += `
+          <tr>
+            <td>${fullName}</td>
+            <td>${username}</td>
+            <td>${email}</td>
+            <td class="action-btns">
+              <button class="view-ban-btn" data-id="${docSnap.id}">View</button>
+              <button class="remove-ban-btn" data-id="${docSnap.id}">Remove</button>
+            </td>
+          </tr>
+        `;
+      }
+      tableContainer.innerHTML = `
+        <div class="table-container">
+          <div class="table-wrapper">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Full Name</th>
+                  <th>Username</th>
+                  <th>Email</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>${rows || `<tr><td colspan="4" style="text-align:center;">No bans found.</td></tr>`}</tbody>
+            </table>
+          </div>
+        </div>
+      `;
+
+      // Attach event listeners
+      document.querySelectorAll(".view-ban-btn").forEach(btn => {
+        btn.onclick = () => showWarnBanDetails(btn.dataset.id, "bans");
+      });
+      document.querySelectorAll(".remove-ban-btn").forEach(btn => {
+        btn.onclick = () => removeWarnBan(btn.dataset.id, "bans");
+      });
+    }
+
+    // --- VIEW DETAILS FOR WARN/BAN ---
+    async function showWarnBanDetails(id, type) {
+      const docRef = doc(db, type, id);
+      const docSnap = await getDoc(docRef);
+      if (!docSnap.exists()) return;
+      const d = docSnap.data();
+      // Get user info
+      let user = {};
+      try {
+        const userSnap = await getDoc(doc(db, "users", d.userId));
+        if (userSnap.exists()) user = userSnap.data();
+      } catch {}
+      // Get admin info
+      let admin = {};
+      try {
+        const adminSnap = await getDoc(doc(db, "users", d.warnedBy || d.bannedBy));
+        if (adminSnap.exists()) admin = adminSnap.data();
+      } catch {}
+      const fullName = `${user.fname || ""} ${user.mname || ""} ${user.lname || ""}`.trim();
+      const username = user.username || "";
+      const email = user.email || "";
+      const adminName = admin.fname ? `${admin.fname} ${admin.lname}` : (d.warnedBy || d.bannedBy || "");
+      showModal(`
+        <button class="close-modal" onclick="document.getElementById('modal-overlay').style.display='none'">&times;</button>
+        <h3>${type === "warnings" ? "Warning" : "Ban"} Details</h3>
+        <p><b>Full Name:</b> ${fullName}</p>
+        <p><b>Username:</b> ${username}</p>
+        <p><b>Email:</b> ${email}</p>
+        <p><b>Duration:</b> ${d.duration === -1 ? "Until changed" : d.duration + " day(s)"}</p>
+        <p><b>Reason:</b> ${d.reason || ""}</p>
+        <p><b>Message:</b> ${d.message || ""}</p>
+        <p><b>${type === "warnings" ? "Warned On" : "Banned On"}:</b> ${d.warnedOn ? formatDate(d.warnedOn) : (d.bannedOn ? formatDate(d.bannedOn) : "")}</p>
+        <p><b>${type === "warnings" ? "Warned By" : "Banned By"}:</b> ${adminName}</p>
+      `);
+    }
+
+    // --- REMOVE WARNING/BAN ---
+    async function removeWarnBan(id, type) {
+      if (!confirm("Are you sure you want to remove this " + (type === "warnings" ? "warning" : "ban") + "?")) return;
+      try {
+        await deleteDoc(doc(db, type, id));
+        alert((type === "warnings" ? "Warning" : "Ban") + " removed.");
+        loadAllTables();
+      } catch (err) {
+        alert("Failed to remove: " + err.message);
+      }
+    }
+
+    // --- VIEW TOUR GUIDE DETAILS ---
+    async function showTourGuide(uid) {
+      const docRef = doc(db, "users", uid);
+      const docSnap = await getDoc(docRef);
+      if (!docSnap.exists()) return;
+      const d = docSnap.data();
+      showModal(`
+        <button class="close-modal" onclick="document.getElementById('modal-overlay').style.display='none'">&times;</button>
+        <h3>Tour Guide Details</h3>
+        <p><b>Full Name:</b> ${d.fname || ""} ${d.mname || ""} ${d.lname || ""}</p>
+        <p><b>Username:</b> ${d.username || ""}</p>
+        <p><b>Email:</b> ${d.email || ""}</p>
+        <p><b>Contact Number:</b> ${d.contactNumber || ""}</p>
+        <p><b>Birthdate:</b> ${formatDate(d.bdate)}</p>
+        <p><b>Age:</b> ${calculateAge(d.bdate)}</p>
+        <p><b>Gender:</b> ${d.gender || ""}</p>
+        <p><b>Status:</b> ${d.status || ""}</p>
+        <p><b>Created On:</b> ${formatDate(d.createdOn)}</p>
+      `);
+    }
+
+    // --- WARN/BAN FORM ---
+    async function showWarnBanForm(uid, type) {
+      // Get admin id
+      let adminId = null;
+      if (auth.currentUser) adminId = auth.currentUser.uid;
+      showModal(`
+        <button class="close-modal" onclick="document.getElementById('modal-overlay').style.display='none'">&times;</button>
+        <h3>${type === "warn" ? "Warn" : "Ban"} Tour Guide</h3>
+        <form id="warnban-form">
+          <label>Duration:
+            <select name="duration" required>
+              ${durationOptions.map(opt => `<option value="${opt.value}">${opt.label}</option>`).join("")}
+            </select>
+          </label><br><br>
+          <label>Reason:
+            <select name="reason" required>
+              <option value="Unappropriate Behavior">Unappropriate Behavior</option>
+              <option value="Others">Others</option>
+            </select>
+          </label><br><br>
+          <label>Message:<br>
+            <textarea name="message" rows="3" style="width:100%;" required></textarea>
+          </label><br><br>
+          <button type="submit">${type === "warn" ? "Warn" : "Ban"}</button>
+        </form>
+      `);
+
+      document.getElementById("warnban-form").onsubmit = async function(e) {
+        e.preventDefault();
+        const form = e.target;
+        const duration = parseInt(form.duration.value, 10);
+        const reason = form.reason.value;
+        const message = form.message.value;
+        const data = {
+          userId: uid,
+          duration: duration,
+          reason,
+          message,
+          warnedOn: serverTimestamp(),
+          warnedBy: adminId
+        };
+        try {
+          await addDoc(collection(db, type === "warn" ? "warnings" : "bans"), data);
+          alert(type === "warn" ? "Warning issued." : "Ban issued.");
+          closeModal();
+          loadAllTables();
+        } catch (err) {
+          alert("Failed to save: " + err.message);
+        }
+      };
+    }
+
+    // --- LOAD ALL TABLES ---
+    function loadAllTables() {
+      loadTourGuides();
+      loadApplications();
+      loadWarnings();
+      loadBans();
+    }
+
+    // Initial load
+    loadAllTables();
+  </script>
+</body>
+</html>

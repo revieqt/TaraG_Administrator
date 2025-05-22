@@ -3,28 +3,44 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Login Card</title>
-  <link rel="stylesheet" href="../../styles/login.css">
+  <title>Login | TaraApp</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" integrity="sha512-..." crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&family=Roboto:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../styles/login.css" />
+  <link rel="stylesheet" href="../../constants/components.css">
 </head>
 <body>
-  <div class="card">
-    <img src="../../assets/images/tara.png" class="logo" />
-    <h2>Login</h2>
-    <form id="login-form">
-      <div class="form-group">
-        <label for="email">Email</label>
+  <div class="container">
+    <div class="card">
+      <img src="../../assets/images/tara.png" class="logo" alt="Tara Logo" />
+      <h2>Login to TaraG</h2>
+      <p>Administrator Panel</p>
+      <form id="login-form">
         <div id="email-error" class="error-message"></div>
-        <input type="email" id="email" required />
-      </div>
-      <div class="form-group">
-        <label for="password">Password</label>
-        <input type="password" id="password" required />
-      </div>
-      <button type="submit" class="login-btn">Sign In</button>
-    </form>
+        <div class="inputField">
+          <label for="email">Email</label>
+          <input type="email" id="email" required placeholder="Enter your email" />
+          
+        </div>
+
+        <div class="inputField">
+          <label for="password">Password</label>
+          <div class="password-wrapper">
+            <input type="password" id="password" required placeholder="Enter your password" />
+            <i id="toggle-password" class="fa-solid fa-eye toggle-password" title="Show Password"></i>
+          </div>
+        </div>
+
+        <div style="width: 100%;">
+          <button type="submit" class="btn">Sign In</button>
+        </div>
+        
+      </form>
+    </div>
   </div>
 
-  <!-- Modular Firebase Setup -->
   <script type="module">
     import { auth, db } from '../../firebase/config.js';
     import {
@@ -79,5 +95,7 @@
       }
     });
   </script>
+  <script src="../../scripts/passwordView.js"></script>
+  <script src="../../scripts/useThemeColor.js"></script>
 </body>
 </html>
